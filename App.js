@@ -4,9 +4,10 @@ import {StyleSheet,View,Text,TextInput,TouchableOpacity,ScrollView,Image,} from 
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import AISearchBar from './src/components/AISearchBar';
 import SplashScreen from './SplashScreen'; // Adjust path if needed
 import Login from './Login'; // Your Login screen component
-import Signup from './Signup';
+import Signup from './Sign';
 
 const modelCards = [
   {
@@ -146,7 +147,7 @@ const HomeScreen = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* Search Bar */}
         <View style={styles.searchBarContainer}>
-          <View style={styles.searchBar}>
+          {/* <View style={styles.searchBar}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={styles.searchInput}
@@ -154,12 +155,16 @@ const HomeScreen = ({ navigation }) => {
               placeholderTextColor="#888"
             />
             <Text style={styles.micIcon}>🎙️</Text>
+          </View> */}
+          <View style={styles.searchBarContainer}>
+            <AISearchBar navigation={navigation} />
           </View>
+
         </View>
 
         {/* Recent Searches */}
         <View style={styles.recentSearches}>
-          <Text style={styles.recentSearchesText}>Most Searches -></Text>
+          <Text style={styles.recentSearchesText}>Most Searches</Text>
         </View>
 
         {/* Model Cards */}

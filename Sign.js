@@ -4,7 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 
 const GEAR_PATH = "M78.6,21.4c-4.4-4.4-9.9-7.9-16.1-10.4C59.9,8.5,55,7,50,7s-9.9,1.5-12.5,4c-6.2,2.5-11.7,6-16.1,10.4C16,25.8,12.5,31.3,10.4,37.5C7.9,40.1,7,45,7,50s1.5,9.9,4,12.5c2.5,6.2,6,11.7,10.4,16.1C25.8,84,31.3,87.5,37.5,89.6C40.1,92.1,45,93,50,93s9.9-1.5,12.5-4c6.2-2.5,11.7-6,16.1-10.4C84,74.2,87.5,68.7,89.6,62.5C92.1,59.9,93,55,93,50s-1.5-9.9-4-12.5C86.5,31.3,83,25.8,78.6,21.4z M50,75c-13.8,0-25-11.2-25-25s11.2-25,25-25s25,11.2,25,25S63.8,75,50,75z M50,55c2.8,0,5-2.2,5-5s-2.2-5-5-5s-5,2.2-5,5S47.2,55,50,55z";
 
-const Login = ({ navigation }) => {
+const Sign = ({ navigation }) => {
   // const navigation = useNavigation();
   const spinValue1 = useRef(new Animated.Value(0)).current;
   const spinValue2 = useRef(new Animated.Value(0)).current;
@@ -43,6 +43,7 @@ const Login = ({ navigation }) => {
         <Path d="M15 18l-6-6 6-6" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
       </Svg>
     );
+
   // Interpolate the spin values to create rotation strings
   const spin1 = spinValue1.interpolate({
     inputRange: [0, 1],
@@ -106,8 +107,9 @@ const Login = ({ navigation }) => {
 
         {/* Login Form */}
         <View style={styles.formContainer}>
-          <Text style={styles.heading}>Login</Text>
-          <Text style={styles.subHeading}>Welcome back! Please enter your details.</Text>
+          <Text style={styles.heading}>Signup</Text>
+          {/* <Text style={styles.subHeading}>Welcome back! Please enter your details.</Text> */}
+
           <TextInput
             style={styles.input}
             placeholder="Email"
@@ -134,9 +136,9 @@ const Login = ({ navigation }) => {
             <Text style={styles.loginButtonText}>LOGIN</Text>
           </TouchableOpacity>
          <Text style={styles.signupText}>
-      Don't have an account?{' '}
-      <TouchableOpacity onPress={() => navigation.navigate('Signup')} activeOpacity={0.7}>
-        <Text style={styles.linkText}>Sign Up</Text>
+      Already have an account?{' '}
+      <TouchableOpacity onPress={() => navigation.navigate('Login')} activeOpacity={0.7}>
+        <Text style={styles.linkText}>Login</Text>
       </TouchableOpacity>
     </Text>
         </View>
@@ -177,6 +179,15 @@ const styles = StyleSheet.create({
   gear: {
     color: '#fff',
   },
+  // backButton: {
+  //   position: 'absolute',
+  //   top: 50,
+  //   left: 20,
+  //   zIndex: 10,
+  //   padding: 10, // increases hit target area
+  //   backgroundColor: 'rgba(0,0,0,0.3)',
+  //   borderRadius: 25,
+  // },
   largeGear: {
     width: 96,
     height: 96,
@@ -288,4 +299,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Login;
+export default Sign;

@@ -1,13 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import {StyleSheet,View,Text,TextInput,TouchableOpacity,ScrollView,Image,} from 'react-native';
-
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { launchCamera } from 'react-native-image-picker';
+// import * as FileSystem from 'expo-file-system';
+import RNFS from 'react-native-fs';
+import axios from 'axios';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-
 import AISearchBar from './src/components/AISearchBar';
-import SplashScreen from './SplashScreen'; // Adjust path if needed
-import Login from './Login'; // Your Login screen component
+import SplashScreen from './SplashScreen';
+import Login from './Login';
 import Signup from './Sign';
+
+const GOOGLE_VISION_API_KEY = 'AIzaSyAIGV0hw-XRHhxgy8aQIBUV_in8YWrChzc'; // Replace!
 
 const modelCards = [
   {
@@ -46,11 +59,7 @@ const userIcons = Array.from({ length: 8 }, (_, i) => ({
 const featuredServices = [
   { title: 'Plumbing', description: 'Fix leaks and pipe issues', icon: '🔧' },
   { title: 'Electrical', description: 'Lighting and wiring repairs', icon: '⚡' },
-  {
-    title: 'Appliance Repair',
-    description: 'Repair home appliances',
-    icon: '🔌',
-  },
+  { title: 'Appliance Repair', description: 'Repair home appliances', icon: '🔌' },
   { title: 'Home Cleaning', description: 'Deep cleaning services', icon: '🧹' },
 ];
 
@@ -77,12 +86,14 @@ const HomeScreen = ({ navigation }) => {
   const [hoveredUser, setHoveredUser] = useState(null);
   const [reviewVisible, setReviewVisible] = useState(false);
 
+  // AI scan state
+  const [searchText, setSearchText] = useState('');
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
-    if (hoveredUser) setReviewVisible(true);
-    else setReviewVisible(false);
+    setReviewVisible(!!hoveredUser);
   }, [hoveredUser]);
 
-  // Handle login/logout toggle
   const handleLoginLogout = () => {
     if (isLoggedIn) {
       setIsLoggedIn(false);
@@ -90,12 +101,114 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  // Image Picker using react-native-image-picker
+  const pickImage = () => {
+    setLoading(true);
+    launchCamera(
+      {
+        mediaType: 'photo',
+        quality: 0.5,
+      },
+      async (response) => {
+        if (response.didCancel) {
+          setLoading(false);
+          console.log('User cancelled image picker');
+        } else if (response.errorCode) {
+          setLoading(false);
+          Alert.alert('Error', response.errorMessage || 'Unknown error');
+        } else if (response.assets && response.assets.length > 0) {
+          // Get the image uri
+          const uri = response.assets[0].uri;
+          await analyzeImage(uri);
+          setLoading(false);
+        } else {
+          setLoading(false);
+          Alert.alert('Error', 'Failed to pick image.');
+        }
+      }
+    );
+  };
+
+  // Google Vision API function remains similar
+  const analyzeImage = async (imageUri) => {
+    // 1. API Key Check (Retained)
+    if (!GOOGLE_VISION_API_KEY || GOOGLE_VISION_API_KEY === 'YOUR_GOOGLE_CLOUD_VISION_API_KEY') {
+        Alert.alert('API Key Missing', 'Please set your actual Google Cloud Vision API key.');
+        return;
+    }
+
+    try {
+        // 2. Read Image and Base64 Conversion
+        const base64ImageData = await RNFS.readFile(imageUri, 'base64');
+        
+        // **--- ADDED: Base64 Sanity Check ---**
+        if (!base64ImageData || base64ImageData.length < 100) {
+            // A short Base64 string indicates a file reading issue.
+            throw new Error("Base64 conversion failed or resulted in a very small file.");
+        }
+        
+        // 3. Construct API Request (Correct)
+        const apiUrl = `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_API_KEY}`;
+        const requestData = {
+            requests: [
+                {
+                    image: { content: base64ImageData },
+                    features: [{ type: 'LABEL_DETECTION', maxResults: 3 }],
+                },
+            ],
+        };
+
+        // 4. Send POST Request (Correct)
+        const response = await axios.post(apiUrl, requestData, {
+             headers: {
+                 'Content-Type': 'application/json', // Explicitly set header
+             },
+             timeout: 15000 // Set a timeout for the request (15 seconds)
+        });
+
+        // 5. Handle Successful Response (Correct)
+        const responseData = response.data.responses[0];
+        const labels = responseData.labelAnnotations;
+
+        if (labels && labels.length > 0) {
+            const topLabel = labels[0].description;
+            Alert.alert('Product Identified!', `Identified: ${topLabel}`);
+            setSearchText(topLabel);
+        } else {
+            Alert.alert('No Product Found', 'Try again with a clearer image or a different angle.');
+        }
+
+    } catch (error) {
+        // **--- MODIFIED: Enhanced Error Logging ---**
+        let errorMessage = 'Failed to connect to the analysis service.';
+        
+        if (error.response) {
+            // Error response from the Vision API server (e.g., 400, 403, 500)
+            const apiError = error.response.data.error;
+            console.error("Vision API responded with an error:", apiError);
+
+            if (apiError && apiError.message) {
+                // Use the Google API's error message if available
+                errorMessage = apiError.message;
+            } else {
+                // Fallback for general HTTP errors
+                errorMessage = `API Request failed with status ${error.response.status}. Check API Key/Billing/Restrictions.`;
+            }
+        } else if (error.message) {
+            // Network error (timeout, connectivity) or custom error (Base64 check)
+            console.error("Network or Client Error:", error.message);
+            errorMessage = `Network Error: ${error.message}. Check your internet connection.`;
+        }
+
+        Alert.alert('Analysis Error', errorMessage);
+    }
+};
+
   return (
     <View style={styles.appContainer}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerText}>HELLO, (NAME)</Text>
-
         <TouchableOpacity
           style={styles.profileCircle}
           onPress={() => setProfileMenuVisible((v) => !v)}
@@ -103,28 +216,17 @@ const HomeScreen = ({ navigation }) => {
         >
           <Text style={styles.profileIcon}>👤</Text>
         </TouchableOpacity>
-
         {isProfileMenuVisible && (
           <View style={styles.profileMenu}>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => setProfileMenuVisible(false)}
-            >
+            <TouchableOpacity style={styles.menuItem} onPress={() => setProfileMenuVisible(false)}>
               <Text style={styles.menuItemText}>My Account</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => setProfileMenuVisible(false)}
-            >
+            <TouchableOpacity style={styles.menuItem} onPress={() => setProfileMenuVisible(false)}>
               <Text style={styles.menuItemText}>Setting</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => setProfileMenuVisible(false)}
-            >
+            <TouchableOpacity style={styles.menuItem} onPress={() => setProfileMenuVisible(false)}>
               <Text style={styles.menuItemText}>Upgrade to Pro</Text>
             </TouchableOpacity>
-
             {!isLoggedIn ? (
               <TouchableOpacity
                 style={styles.menuItem}
@@ -145,21 +247,30 @@ const HomeScreen = ({ navigation }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Search Bar */}
-        <View style={styles.searchBarContainer}>
-          {/* <View style={styles.searchBar}>
-            <Text style={styles.searchIcon}>🔍</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="What do you want to fix today?"
-              placeholderTextColor="#888"
-            />
-            <Text style={styles.micIcon}>🎙️</Text>
-          </View> */}
-          <View style={styles.searchBarContainer}>
-            <AISearchBar navigation={navigation} />
+        {/* AI Search Bar + Scan Button */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+          <View style={{ flex: 1 }}>
+            <AISearchBar navigation={navigation} value={searchText} onChangeText={setSearchText} />
           </View>
-
+          <TouchableOpacity
+            style={{
+              marginLeft: 8,
+              width: 48,
+              height: 48,
+              borderRadius: 10,
+              backgroundColor: '#4A3D36',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+            onPress={pickImage}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#D4C6C0" />
+            ) : (
+              <Text style={{ fontSize: 22, color: '#D4C6C0' }}>📷</Text>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Recent Searches */}
@@ -168,11 +279,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
 
         {/* Model Cards */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.cardScrollView}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cardScrollView}>
           {modelCards.map((card, idx) => (
             <View key={idx} style={styles.card}>
               <Image source={{ uri: card.imageUrl }} style={styles.cardImage} />
@@ -196,14 +303,9 @@ const HomeScreen = ({ navigation }) => {
 
         {/* User Icons */}
         <Text style={[styles.scrollText, styles.userIconText]}>
-          (putting cursor on the person's icon, the icon rises a little and review fades in,
-          scrollable ➔)
+          (putting cursor on the person's icon, the icon rises a little and review fades in, scrollable ➔)
         </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.userIconScrollView}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.userIconScrollView}>
           {userIcons.map((user) => (
             <TouchableOpacity
               key={user.id}
